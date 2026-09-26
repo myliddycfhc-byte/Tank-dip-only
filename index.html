@@ -209,6 +209,15 @@ a.btn{display:flex;align-items:center;justify-content:center;text-decoration:non
   </div>
 </div>
 
+<!-- shown while today's day is being saved -->
+<div class="ov" id="savePop">
+  <div class="sheet syncsheet">
+    <div class="loader" id="svLoader"></div>
+    <h3 id="svTitle">Saving...</h3>
+    <p class="wstat" id="svText"></p>
+  </div>
+</div>
+
 <!-- shown every time the app opens -->
 <div class="ov" id="welcome">
   <div class="sheet">
@@ -514,10 +523,32 @@ function saveDay(quiet){
     return {ok:false,msg:failMsg};
   });
 }
+// popup with the circular loader while today's day is being saved
+var saveTimer;
+function showSavePop(){
+  clearTimeout(saveTimer);
+  setLoader($('#svLoader'),'');
+  $('#svTitle').textContent='Saving...';
+  $('#svText').textContent=settings.sheetUrl?'Saving on this phone and sending to Google Sheet.':'Saving on this phone.';
+  $('#savePop').classList.add('on');
+}
+function finishSavePop(ok,msg){
+  var pop=$('#savePop');
+  clearTimeout(saveTimer);
+  setLoader($('#svLoader'),ok?'done':'fail');
+  $('#svTitle').textContent=ok?'Saved':'Could not send';
+  $('#svText').textContent=msg||'';
+  pop.classList.add('on');
+  saveTimer=setTimeout(function(){pop.classList.remove('on')},ok?1400:2600);
+}
 $('#btnSave').addEventListener('click',function(){
   var btn=$('#btnSave');
   btn.disabled=true;
-  saveDay(false).then(function(){btn.disabled=false});
+  showSavePop();
+  saveDay(true).then(function(r){
+    btn.disabled=false;
+    finishSavePop(r.ok,r.msg);
+  });
 });
 /* ---------- Refresh ---------- */
 var CLOSINGS=['d1c','d2c','k1c','k2c','ddc','kdc','p750c','p375c','p180c','p20c','gec','gfc'];
