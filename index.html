@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c2024">
+<meta name="description" content="Daily fuel, oil and gas stock report.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Fuel Stock">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Fuel Station Daily Stock</title>
+<style>
+:root{
+  --asphalt:#1c2024; --concrete:#e6e9e8; --ink:#1c2024; --mut:#66706f; --line:#d5dad9;
+  --safety:#ffc300; --display:#ffb703;
+  --diesel:#b06f00; --kero:#1f6fb2; --dip:#2b7a68; --oil:#6b4a2b; --gas:#c0392b; --wa:#12a150;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+button,a,input,.hist li{touch-action:manipulation}
+body{overscroll-behavior-y:none}
+body{margin:0;background:var(--concrete);color:var(--ink);font:16px/1.4 "Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding-bottom:96px}
+.wrap{max-width:560px;margin:0 auto;padding:0 12px}
+
+/* header with hazard stripe */
+.top{background:var(--asphalt);color:#fff;padding-top:env(safe-area-inset-top,0px)}
+.stripe{height:14px;background:repeating-linear-gradient(-45deg,var(--safety) 0 14px,var(--asphalt) 14px 28px)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;padding-top:14px;padding-bottom:14px}
+.top h1{margin:0;font-size:20px;font-weight:700;letter-spacing:.01em}
+.top p{margin:2px 0 0;font-size:13px;color:#aeb7b6}
+.icon{width:44px;height:44px;border-radius:12px;border:1.5px solid #454c50;background:transparent;color:#fff;font-size:20px;cursor:pointer}
+.top .tools{padding-top:0;padding-bottom:14px;gap:10px;justify-content:stretch}
+.tbtn{flex:1;height:46px;border-radius:12px;border:1.5px solid #454c50;background:transparent;color:#fff;font:700 16px "Segoe UI",Roboto,Helvetica,Arial,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.tbtn.add{background:var(--safety);border-color:var(--safety);color:var(--asphalt)}
+.tbtn:active{transform:translateY(1px)}
+.tbtn:disabled{opacity:.7;cursor:default}
+.tbtn .ico{font-size:20px;line-height:1;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:no-preference){.tbtn.busy .ico{animation:spin .8s linear infinite}}
+
+/* date row */
+.when{background:#fff;border:1px solid var(--line);border-radius:16px;margin:14px 0;padding:12px}
+.when .r1{display:flex;gap:8px}
+.when input[type=date]{flex:1;min-width:0;height:48px;border:1.5px solid #c7cdcc;border-radius:10px;padding:0 10px;font-size:18px;font-weight:600;background:#fff;color:var(--ink)}
+.nav{width:48px;height:48px;border-radius:10px;border:1.5px solid #c7cdcc;background:#fff;font-size:22px;cursor:pointer;color:var(--ink)}
+.when .r2{display:flex;gap:8px;align-items:center;margin-top:10px}
+.when .r2 label{font-size:14px;color:var(--mut);font-weight:600}
+.when input[type=time]{height:44px;border:1.5px solid #c7cdcc;border-radius:10px;padding:0 10px;font-size:17px;background:#fff;color:var(--ink)}
+.small{height:44px;padding:0 14px;border-radius:10px;border:1.5px solid #c7cdcc;background:#fff;font-weight:600;cursor:pointer;color:var(--ink)}
+.note{margin:10px 2px 0;font-size:14px;color:var(--mut)}
+.note.auto{color:#8a6100}
+
+/* section cards */
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;margin:14px 0;overflow:hidden}
+.card h2{margin:0;padding:12px 16px;color:#fff;font-size:18px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline;background:var(--c)}
+.card h2 small{font-size:14px;font-weight:500;opacity:.85}
+.card.diesel{--c:var(--diesel)} .card.kero{--c:var(--kero)} .card.dip{--c:var(--dip)} .card.oil{--c:var(--oil)} .card.gas{--c:var(--gas)}
+.row{padding:14px 14px 6px}
+.rlabel{font-weight:700;margin-bottom:8px}
+.rgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end}
+.rgrid.two{grid-template-columns:1fr 1fr}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld span,.out span{font-size:13px;color:var(--mut);font-weight:600}
+.fld input{width:100%;height:50px;border:1.5px solid #c7cdcc;border-radius:10px;padding:0 10px;font-size:20px;font-variant-numeric:tabular-nums;background:#fff;color:var(--ink)}
+.fld input:focus{outline:3px solid rgba(31,111,178,.35);border-color:var(--kero)}
+.fld input[readonly]{background:#eef0ef;color:var(--mut);border-color:#d5dad9}
+.fld input[readonly]:focus{outline:none;border-color:#d5dad9}
+.fld input.auto{background:#fff5d6;border:1.5px dashed #c9a227}
+.out{display:flex;flex-direction:column;gap:4px;min-width:0}
+.out b,.total b{font-family:ui-monospace,"Courier New",monospace;background:var(--asphalt);color:var(--display);border-radius:10px;font-variant-numeric:tabular-nums}
+.out b{height:50px;display:flex;align-items:center;justify-content:flex-end;padding:0 10px;font-size:19px;overflow:hidden}
+.total{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px 14px;margin-top:8px;border-top:1px solid var(--line);font-weight:700}
+.total b{font-size:22px;padding:8px 14px;min-width:140px;text-align:right}
+b.neg{color:#ff7b7b}
+.hint{font-size:13px;color:var(--mut);padding:0 16px 12px}
+
+/* history */
+.hist h2{margin:22px 4px 8px;font-size:18px}
+.hist ul{list-style:none;margin:0;padding:0}
+.hist li{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.hist li.on{border-color:var(--asphalt);box-shadow:inset 4px 0 0 var(--safety)}
+.hist li .d{flex:1;min-width:0}
+.hist li .d b{display:block}
+.hist li .d small{color:var(--mut)}
+.hist li .mini{font-size:13px;color:var(--mut);text-align:right;line-height:1.5}
+.hist li .mini b{color:var(--ink);font-variant-numeric:tabular-nums}
+.hist li button{border:0;background:transparent;font-size:18px;color:#a0a8a7;padding:8px;cursor:pointer}
+.hist li.empty{cursor:default;color:var(--mut);justify-content:center}
+
+/* bottom bar */
+.bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px));z-index:5}
+.bar .wrap{display:flex;gap:10px}
+.btn{flex:1;height:54px;border:0;border-radius:14px;font:700 17px "Segoe UI",Roboto,Helvetica,Arial,sans-serif;cursor:pointer;position:relative}
+.btn.save{background:var(--asphalt);color:#fff;flex:.8}
+.btn.share{background:var(--wa);color:#fff}
+.btn.ghost{background:#fff;border:1.5px solid #c7cdcc;color:var(--ink)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.75;cursor:default}
+
+/* overlays */
+.ov{position:fixed;inset:0;background:rgba(15,20,22,.65);display:none;align-items:center;justify-content:center;z-index:20;padding:12px}
+.ov.on{display:flex}
+.sheet{background:#fff;border-radius:18px;max-width:520px;width:100%;max-height:94vh;overflow:auto;padding:16px}
+.sheet h3{margin:0 0 12px;font-size:19px}
+.sheet .fld{margin-bottom:12px}
+.sheet .fld input[type=text],.sheet .fld input[type=url]{font-size:16px}
+.sheet .help{font-size:13px;color:var(--mut);margin:-6px 0 12px}
+.sheet .btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.sheet .btns .btn{height:48px;font-size:15px;min-width:130px}
+.inst{background:#fff5d6;border:1.5px dashed #c9a227;border-radius:12px;padding:12px;margin:0 0 12px}
+.inst p{margin:0 0 8px;font-size:14px;color:#5a4400}
+.inst p:last-child{margin:0}
+.inst .btn{height:48px;font-size:15px;width:100%;flex:none}
+.wdate{margin:-4px 0 10px;font-size:16px;font-weight:600}
+.wstat{margin:0 0 12px;font-size:15px;color:var(--mut);min-height:44px}
+.wstat.bad{color:#b3261e}
+.loader{width:60px;height:60px;margin:4px auto 14px;border-radius:50%;border:6px solid #e0e4e3;border-top-color:var(--asphalt);border-right-color:var(--safety);animation:spin .9s linear infinite;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;line-height:1}
+.loader.done{animation:none;border-color:var(--wa);color:var(--wa)}
+.loader.fail{animation:none;border-color:#b3261e;color:#b3261e}
+.syncsheet{max-width:320px;text-align:center}
+.syncsheet h3{margin-bottom:6px}
+.syncsheet .wstat{min-height:0;margin-bottom:4px}
+#welcome .sheet{text-align:center}
+#welcome .btns{justify-content:center}
+@media (prefers-reduced-motion:reduce){.loader{animation-duration:2.4s}}
+a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
+
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--asphalt);color:#fff;padding:11px 16px;border-radius:12px;font-size:15px;z-index:30;max-width:90vw;text-align:center;display:none}
+.toast.on{display:block}
+@media (prefers-reduced-motion:no-preference){.btn{transition:transform .08s}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="stripe"></div>
+  <div class="wrap">
+    <div>
+      <h1 id="hName">Fuel Station</h1>
+      <p>Daily stock report</p>
+    </div>
+    <button class="icon" id="btnSettings" aria-label="Settings">&#9881;</button>
+  </div>
+  <div class="wrap tools">
+    <button class="tbtn" id="btnRefresh" style="flex:1"><span class="ico" aria-hidden="true">&#8635;</span>Refresh</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="when">
+    <div class="r1">
+      <button class="nav" id="prev" aria-label="Previous day">&#8249;</button>
+      <input type="date" id="date" aria-label="Date">
+      <button class="nav" id="next" aria-label="Next day">&#8250;</button>
+    </div>
+    <div class="r2">
+      <label for="time">Time</label>
+      <input type="time" id="time">
+      <button class="small" id="now">Now</button>
+    </div>
+    <p class="note" id="note"></p>
+  </div>
+
+  <div id="sections"></div>
+
+  <div class="hist">
+    <h2>Saved days (<span id="count">0</span>)</h2>
+    <ul id="list"></ul>
+  </div>
+</main>
+
+<div class="bar">
+  <div class="wrap">
+    <button class="btn save" id="btnSave" style="flex:1">Save day</button>
+  </div>
+</div>
+
+<!-- settings -->
+<div class="ov" id="settings">
+  <div class="sheet">
+    <h3>Settings</h3>
+    <div class="inst" id="instBox" hidden>
+      <p id="instText">Add this app to your home screen so it opens like a normal app and keeps working without internet.</p>
+      <button class="btn save" id="instBtn" hidden>Install app</button>
+    </div>
+    <label class="fld"><span>Station name (shows on the photo)</span><input type="text" id="sStation" autocomplete="off"></label>
+    <label class="fld"><span>Tank dip unit</span><input type="text" id="sDip" placeholder="cm" autocomplete="off"></label>
+    <label class="fld"><span>Google Sheet link (optional)</span><input type="url" id="sUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></label>
+    <p class="help">Paste the Web App link from the Google Sheet script. Every "Save day" and "Share photo" then also sends the day to your sheet.</p>
+    <div class="btns">
+      <button class="btn save" id="sSave">Save settings</button>
+      <button class="btn ghost" id="sPull">Get days from Sheet</button>
+      <button class="btn ghost" id="sCsv">Download all as CSV</button>
+      <button class="btn ghost" data-close="settings">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- shown while old data is being updated from the sheet -->
+<div class="ov" id="syncPop">
+  <div class="sheet syncsheet">
+    <div class="loader" id="spLoader"></div>
+    <h3 id="spTitle">Updating old data...</h3>
+    <p class="wstat" id="spText"></p>
+  </div>
+</div>
+
+<!-- shown every time the app opens -->
+<div class="ov" id="welcome">
+  <div class="sheet">
+    <div class="loader" id="wLoader"></div>
+    <h3 id="wTitle">Fuel Station</h3>
+    <p class="wdate" id="wDate"></p>
+    <p class="wstat" id="wStatus"></p>
+    <div class="btns">
+      <button class="btn ghost" data-close="welcome">Continue</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- storage ---------- */
+var KEY_REC='fuelapp_records_v1', KEY_SET='fuelapp_settings_v1', KEY_DIRTY='fuelapp_unsent_v1', KEY_SYNC='fuelapp_lastsync_v1';
+function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+var storageWarned=false;
+function store(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){if(!storageWarned){storageWarned=true;toast('Cannot save on this browser. Use Share photo and CSV to keep your data.')}return false}}
+var lastSyncAt=load(KEY_SYNC,0);          // when the sheet was last pulled successfully (survives app restarts)
+var SYNC_FRESH_MS=2*60*1000;              // skip a fresh pull on open if synced within this long ago
+
+var INPUTS=['d1o','d1c','d2o','d2c','k1o','k1c','k2o','k2c','ddo','ddc','kdo','kdc','p750o','p750c','p375o','p375c','p180o','p180c','p20o','p20c','geo','gfo','gec','gfc'];
+// opening field -> the closing field of the day before
+var PREFILL={d1o:'d1c',d2o:'d2c',k1o:'k1c',k2o:'k2c',ddo:'ddc',kdo:'kdc',p750o:'p750c',p375o:'p375c',p180o:'p180c',p20o:'p20c',geo:'gec',gfo:'gfc'};
+var COLS=[
+ ['date','Date'],['time','Time'],
+ ['d1o','Diesel P1 Opening'],['d1c','Diesel P1 Closing'],['d1s','Diesel P1 Sales'],
+ ['d2o','Diesel P2 Opening'],['d2c','Diesel P2 Closing'],['d2s','Diesel P2 Sales'],['dtot','Diesel Total Sales'],
+ ['k1o','Kerosene P1 Opening'],['k1c','Kerosene P1 Closing'],['k1s','Kerosene P1 Sales'],
+ ['k2o','Kerosene P2 Opening'],['k2c','Kerosene P2 Closing'],['k2s','Kerosene P2 Sales'],['ktot','Kerosene Total Sales'],
+ ['ddo','Diesel Tank Opening Dip'],['ddc','Diesel Tank Closing Dip'],
+ ['kdo','Kerosene Tank Opening Dip'],['kdc','Kerosene Tank Closing Dip'],
+ ['p750o','Oil 750ML Opening (bottles)'],['p750c','Oil 750ML Closing (bottles)'],['p375o','Oil 375ML Opening (bottles)'],['p375c','Oil 375ML Closing (bottles)'],
+ ['p180o','Oil 180ML Opening (bottles)'],['p180c','Oil 180ML Closing (bottles)'],['p20o','Oil 20L Can Opening'],['p20c','Oil 20L Can Closing'],
+ ['oilOT','Oil Opening Total ML'],['oilCT','Oil Closing Total ML'],['oilST','Oil Sold ML'],
+ ['geo','Gas Opening Empty'],['gfo','Gas Opening Full'],['gec','Gas Closing Empty'],['gfc','Gas Closing Full'],['gass','Gas Full Sold']
+];
+
+var records=load(KEY_REC,{});
+var DEFAULT_SHEET_URL='https://script.google.com/macros/s/AKfycbzqXWAet0ybIE--Ov7AFVAy7C91sLbPZjok3iceHnPWPIu2J1HsfpbZo8nU2bktzk-i/exec';
+var settings=Object.assign({station:'My Fuel Station',dipUnit:'cm',oilUnit:'L',sheetUrl:''},load(KEY_SET,{}));
+if(!settings.sheetUrl)settings.sheetUrl=DEFAULT_SHEET_URL;   // always connected to your sheet
+// days changed on this phone that are not sent to the sheet yet (Refresh must not overwrite these)
+var unsent=load(KEY_DIRTY,{});
+function markUnsent(d){if(settings.sheetUrl&&!unsent[d]){unsent[d]=1;store(KEY_DIRTY,unsent)}}
+function markSent(d){if(unsent[d]){delete unsent[d];store(KEY_DIRTY,unsent)}}
+var cur=null, auto=new Set(), timeTouched=false, pendingNext=null;
+var CLOSE2OPEN={};Object.keys(PREFILL).forEach(function(o){CLOSE2OPEN[PREFILL[o]]=o});
+
+/* ---------- helpers ---------- */
+function $(s){return document.querySelector(s)}
+function pad(n){return String(n).padStart(2,'0')}
+function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function todayStr(){return ymd(new Date())}
+function nowHM(){var d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())}
+function parseD(s){var p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2])}
+function addDays(s,n){var d=parseD(s);d.setDate(d.getDate()+n);return ymd(d)}
+function longDate(s){return parseD(s).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+function shortDate(s){return parseD(s).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}
+function time12(t){if(!t)return '';var p=t.split(':').map(Number);var h=p[0],m=p[1];return ((h%12)||12)+':'+pad(m)+' '+(h>=12?'PM':'AM')}
+
+function num(v){if(v===''||v===null||v===undefined)return null;var n=parseFloat(v);return isNaN(n)?null:n}
+function r2(x){return Math.round(x*100)/100}
+function sub(a,b){a=num(a);b=num(b);return(a===null||b===null)?null:r2(b-a)}   // b - a
+function add(){var v=[].slice.call(arguments).filter(function(x){return x!==null});return v.length?r2(v.reduce(function(p,q){return p+q},0)):null}
+function fmt(n){return(n===null||n===undefined)?'\u2014':n.toLocaleString('en-US',{maximumFractionDigits:2})}
+
+var OIL=[{k:'p750',ml:750,label:'750 ML bottle'},{k:'p375',ml:375,label:'375 ML bottle'},{k:'p180',ml:180,label:'180 ML bottle'},{k:'p20',ml:20000,label:'20 L can'}];
+function calc(r){
+  var o={};
+  o.d1s=sub(r.d1o,r.d1c); o.d2s=sub(r.d2o,r.d2c); o.dtot=add(o.d1s,o.d2s);
+  o.k1s=sub(r.k1o,r.k1c); o.k2s=sub(r.k2o,r.k2c); o.ktot=add(o.k1s,o.k2s);
+  o.dds=sub(r.ddo,r.ddc); o.kds=sub(r.kdo,r.kdc);   // dip change (closing - opening)
+  // oil: bottles and cans -> ML
+  var mlO=[],mlC=[];
+  OIL.forEach(function(s){
+    o[s.k+'s']=sub(r[s.k+'c'],r[s.k+'o']);              // sold count = opening - closing
+    var qo=num(r[s.k+'o']),qc=num(r[s.k+'c']);
+    mlO.push(qo===null?null:qo*s.ml);mlC.push(qc===null?null:qc*s.ml);
+  });
+  o.oilOT=add.apply(null,mlO);o.oilCT=add.apply(null,mlC);
+  o.oilST=(o.oilOT===null&&o.oilCT===null)?null:r2((o.oilOT||0)-(o.oilCT||0));
+  o.gass=sub(r.gfc,r.gfo);                           // full cylinders: opening - closing
+  return o;
+}
+function flat(r){return Object.assign({},r,calc(r))}
+
+var toastT;
+function toast(msg){var t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove('on')},3200)}
+
+/* ---------- build form ---------- */
+var SECTIONS=[
+ {cls:'diesel',title:'Diesel pumps',unit:'L',sLabel:'Sales',rows:[{label:'Pump 1',o:'d1o',c:'d1c',s:'d1s'},{label:'Pump 2',o:'d2o',c:'d2c',s:'d2s'}],total:{label:'Diesel total sales',k:'dtot'}},
+ {cls:'kero',title:'Kerosene pumps',unit:'L',sLabel:'Sales',rows:[{label:'Pump 1',o:'k1o',c:'k1c',s:'k1s'},{label:'Pump 2',o:'k2o',c:'k2c',s:'k2s'}],total:{label:'Kerosene total sales',k:'ktot'}},
+ {cls:'dip',title:'Tank dip',unitKey:'dip',sLabel:'Change',rows:[{label:'Diesel tank',o:'ddo',c:'ddc',s:'dds'},{label:'Kerosene tank',o:'kdo',c:'kdc',s:'kds'}]},
+ {cls:'oil',title:'Oil stock',unit:'enter how many',sLabel:'Sold',
+   rows:OIL.map(function(s){return{label:s.label,o:s.k+'o',c:s.k+'c',s:s.k+'s'}}),
+   totals:[{label:'Opening total (ML)',k:'oilOT'},{label:'Closing total (ML)',k:'oilCT'},{label:'Oil sold (ML)',k:'oilST'}]}
+];
+var EDITABLE=['ddc','kdc'];   // only Diesel tank Closing and Kerosene tank Closing can be changed; everything else is view-only
+function inputHTML(k,label){
+  var ro=EDITABLE.indexOf(k)>-1?'':' readonly';
+  return '<label class="fld"><span>'+label+'</span><input type="number" inputmode="decimal" step="any" enterkeyhint="next" autocomplete="off" data-k="'+k+'"'+ro+'></label>';
+}
+function el(html){var t=document.createElement('template');t.innerHTML=html.trim();return t.content.firstChild}
+
+function buildForm(){
+  var host=$('#sections');
+  SECTIONS.forEach(function(sec){
+    var rows=sec.rows.map(function(r){
+      return '<div class="row"><div class="rlabel">'+r.label+'</div><div class="rgrid">'+
+        inputHTML(r.o,'Opening')+inputHTML(r.c,'Closing')+
+        '<div class="out"><span>'+sec.sLabel+'</span><b data-out="'+r.s+'">\u2014</b></div></div></div>';
+    }).join('');
+    (sec.totals||(sec.total?[sec.total]:[])).forEach(function(t){rows+='<div class="total"><span>'+t.label+'</span><b data-out="'+t.k+'">\u2014</b></div>'});
+    var unitAttr=sec.unitKey?' data-unitkey="'+sec.unitKey+'"':'';
+    var unitTxt=sec.unit?sec.unit:'';
+    host.appendChild(el('<section class="card '+sec.cls+'"><h2>'+sec.title+'<small'+unitAttr+'>'+unitTxt+'</small></h2>'+rows+'</section>'));
+  });
+  host.appendChild(el(
+   '<section class="card gas"><h2>Gas cylinders<small>cylinders</small></h2>'+
+   '<div class="row"><div class="rlabel">Opening stock</div><div class="rgrid two">'+inputHTML('geo','Empty gas')+inputHTML('gfo','Full gas')+'</div></div>'+
+   '<div class="row"><div class="rlabel">Closing stock</div><div class="rgrid two">'+inputHTML('gec','Empty gas')+inputHTML('gfc','Full gas')+'</div></div>'+
+   '<div class="total"><span>Full cylinders sold</span><b data-out="gass">\u2014</b></div></section>'));
+}
+function refreshUnits(){
+  document.querySelectorAll('[data-unitkey]').forEach(function(s){
+    s.textContent=settings.dipUnit||'cm';
+  });
+  $('#hName').textContent=settings.station||'Fuel Station';
+}
+
+/* ---------- load / paint a day ---------- */
+function blank(d){var r={date:d,time:nowHM()};INPUTS.forEach(function(k){r[k]=''});return r}
+function prevRecord(d){var ds=Object.keys(records).filter(function(x){return x<d}).sort();return ds.length?records[ds[ds.length-1]]:null}
+var prevDate=null;
+
+function loadDate(d){
+  cur=Object.assign(blank(d),records[d]||{});
+  if(!cur.time)cur.time=nowHM();
+  auto=new Set(); timeTouched=false; prevDate=null;
+  var prev=prevRecord(d);
+  if(prev){
+    Object.keys(PREFILL).forEach(function(k){
+      var pv=num(prev[PREFILL[k]]);
+      if(pv===null)return;
+      if(num(cur[k])===null){cur[k]=prev[PREFILL[k]];auto.add(k);prevDate=prev.date}
+      else if(num(cur[k])===pv){auto.add(k);prevDate=prev.date}
+    });
+  }
+  paint();
+}
+function paint(){
+  document.querySelectorAll('[data-k]').forEach(function(i){
+    var k=i.dataset.k;i.value=(cur[k]===undefined||cur[k]===null)?'':cur[k];i.classList.toggle('auto',auto.has(k));
+  });
+  $('#date').value=cur.date; $('#time').value=cur.time;
+  updateOut(); updateNote(); renderHistory();
+}
+function updateOut(){
+  var c=calc(cur);
+  document.querySelectorAll('[data-out]').forEach(function(b){
+    var key=b.dataset.out, v=c[key];
+    b.textContent=fmt(v);
+    b.classList.toggle('neg',v!==null&&v<0&&key!=='dds'&&key!=='kds');
+  });
+}
+function updateNote(){
+  var n=$('#note'), c=calc(cur), bad=['d1s','d2s','k1s','k2s','p750s','p375s','p180s','p20s','oilST','gass'].some(function(k){return c[k]!==null&&c[k]<0});
+  n.classList.remove('auto');
+  if(bad){n.textContent='Check the numbers: a closing value is lower than expected (shown in red).';return}
+  if(auto.size){n.classList.add('auto');n.textContent='Yellow boxes: opening filled from closing of '+shortDate(prevDate)+'. You can change them.';return}
+  n.textContent=records[cur.date]?'Saved on this phone.':'New day. Enter the readings.';
+}
+function persist(){
+  records[cur.date]=Object.assign({},cur);
+  markUnsent(cur.date);
+  store(KEY_REC,records);
+  renderHistory();
+}
+
+/* ---------- history ---------- */
+function renderHistory(){
+  var ds=Object.keys(records).sort().reverse();
+  $('#count').textContent=ds.length;
+  $('#list').innerHTML=ds.length?ds.map(function(d){
+    var c=calc(records[d]);
+    return '<li data-d="'+d+'" class="'+(cur&&d===cur.date?'on':'')+'"><div class="d"><b>'+shortDate(d)+'</b><small>'+time12(records[d].time)+'</small></div>'+
+      '<div class="mini">Diesel <b>'+fmt(c.dtot)+'</b><br>Kerosene <b>'+fmt(c.ktot)+'</b></div>'+
+      '<button data-del="'+d+'" aria-label="Delete this day">\u2715</button></li>';
+  }).join(''):'<li class="empty">No days saved yet.</li>';
+}
+$('#list').addEventListener('click',function(e){
+  var del=e.target.closest('[data-del]');
+  if(del){
+    e.stopPropagation();
+    var d=del.dataset.del;
+    if(confirm('Delete '+shortDate(d)+'?')){delete records[d];store(KEY_REC,records);if(cur.date===d){loadDate(d)}else{renderHistory()}}
+    return;
+  }
+  var li=e.target.closest('li[data-d]');
+  if(li){loadDate(li.dataset.d);window.scrollTo({top:0,behavior:'smooth'})}
+});
+
+/* ---------- closing today -> opening tomorrow ---------- */
+function carryToNext(openKey,oldVal,newVal){
+  var later=Object.keys(records).filter(function(x){return x>cur.date}).sort();
+  var d=later.length?later[0]:addDays(cur.date,1);
+  var rec=records[d];
+  if(!rec){rec=blank(d);rec.time='';rec[openKey]=newVal;records[d]=rec}
+  else{
+    // do not overwrite an opening that was typed by hand
+    if(num(rec[openKey])!==null&&num(rec[openKey])!==num(oldVal))return;
+    rec[openKey]=newVal;
+  }
+  pendingNext=d;markUnsent(d);
+  store(KEY_REC,records);renderHistory();
+}
+
+/* ---------- events ---------- */
+document.addEventListener('input',function(e){
+  var i=e.target;
+  if(i.dataset&&i.dataset.k&&EDITABLE.indexOf(i.dataset.k)>-1){
+    var k=i.dataset.k, oldVal=cur[k];
+    cur[k]=i.value;auto.delete(k);i.classList.remove('auto');
+    persist();
+    if(CLOSE2OPEN[k])carryToNext(CLOSE2OPEN[k],oldVal,i.value);
+    updateOut();updateNote();
+  }
+});
+// when a view-only field's edit is finished (blur/Enter), send the day to the Google Sheet quietly
+document.addEventListener('change',function(e){
+  var i=e.target;
+  if(i.dataset&&i.dataset.k&&EDITABLE.indexOf(i.dataset.k)>-1){saveDay(true)}
+});
+$('#date').addEventListener('change',function(){if(this.value)loadDate(this.value)});
+$('#prev').addEventListener('click',function(){loadDate(addDays(cur.date,-1))});
+$('#next').addEventListener('click',function(){loadDate(addDays(cur.date,1))});
+$('#time').addEventListener('change',function(){cur.time=this.value||cur.time;timeTouched=true;if(records[cur.date])persist()});
+$('#now').addEventListener('click',function(){cur.time=nowHM();$('#time').value=cur.time;timeTouched=true;if(records[cur.date])persist()});
+
+document.querySelectorAll('[data-close]').forEach(function(b){b.addEventListener('click',function(){$('#'+b.dataset.close).classList.remove('on')})});
+document.querySelectorAll('.ov').forEach(function(o){o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('on')})});
+
+/* ---------- Google Sheet sync ---------- */
+function fetchTimeout(url,opts,ms){
+  var ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
+  var o=Object.assign({},opts||{});
+  if(ctrl)o.signal=ctrl.signal;
+  var t=ctrl?setTimeout(function(){ctrl.abort()},ms):null;
+  return fetch(url,o).finally(function(){if(t)clearTimeout(t)});
+}
+function push(rec){
+  return fetchTimeout(settings.sheetUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(flat(rec))},15000);
+}
+function sameVal(a,b){a=(a===undefined||a===null)?'':String(a);b=(b===undefined||b===null)?'':String(b);return a===b||(num(a)!==null&&num(a)===num(b))}
+// Gets days from the sheet: adds new days and updates old days that changed.
+// Days edited on this phone and not sent yet are kept as they are.
+function pull(){
+  var u=settings.sheetUrl;
+  return fetchTimeout(u+(u.indexOf('?')>-1?'&':'?')+'action=list&_='+Date.now(),{cache:'no-store'},9000).then(function(r){return r.json()}).then(function(data){
+    var added=0,updated=0;
+    (data.rows||[]).forEach(function(row){
+      var d=String(row.date||'').slice(0,10);
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return;
+      var old=records[d];
+      if(old&&unsent[d])return;
+      var r=blank(d);r.time=String(row.time||'').slice(0,5);
+      INPUTS.forEach(function(k){r[k]=(row[k]===''||row[k]===null||row[k]===undefined)?'':String(row[k])});
+      if(!old){records[d]=r;added++;return}
+      if(!/^\d{2}:\d{2}$/.test(r.time))r.time=old.time||'';
+      if(INPUTS.some(function(k){return !sameVal(old[k],r[k])})){records[d]=r;updated++}
+    });
+    if(added||updated)store(KEY_REC,records);
+    lastSyncAt=Date.now();store(KEY_SYNC,lastSyncAt);
+    return {added:added,updated:updated};
+  });
+}
+
+/* ---------- save ---------- */
+function saveDay(quiet){
+  persist();
+  var nextD=pendingNext;pendingNext=null;
+  var msg=nextD?'Saved. Tomorrow\'s opening is added.':'Saved on this phone';
+  if(!settings.sheetUrl){if(!quiet)toast(msg);return Promise.resolve({ok:true,msg:msg})}
+  var day=cur.date;
+  var jobs=[push(cur)];
+  if(nextD&&records[nextD]&&nextD!==day)jobs.push(push(records[nextD]));
+  return Promise.all(jobs).then(function(){
+    markSent(day);if(nextD&&nextD!==day)markSent(nextD);
+    var okMsg=nextD?'Saved. Tomorrow\'s opening added. Sent to Google Sheet.':'Saved and sent to Google Sheet';
+    if(!quiet)toast(okMsg);
+    return {ok:true,msg:okMsg};
+  }).catch(function(){
+    var failMsg='Saved here. Could not reach Google Sheet.';
+    if(!quiet)toast(failMsg);
+    return {ok:false,msg:failMsg};
+  });
+}
+$('#btnSave').addEventListener('click',function(){
+  var btn=$('#btnSave');
+  btn.disabled=true;
+  saveDay(false).then(function(){btn.disabled=false});
+});
+/* ---------- Refresh ---------- */
+var CLOSINGS=['d1c','d2c','k1c','k2c','ddc','kdc','p750c','p375c','p180c','p20c','gec','gfc'];
+function hasReadings(r){return !!r&&CLOSINGS.some(function(k){return num(r[k])!==null})}
+
+function syncMsg(n){
+  var p=[];
+  if(n.added)p.push(n.added+' new day'+(n.added>1?'s':''));
+  if(n.updated)p.push(n.updated+' day'+(n.updated>1?'s':'')+' updated');
+  return p.length?('From the sheet: '+p.join(', ')+'.'):'';
+}
+
+// if the app was left open past midnight, move to the new today
+var openedOn=todayStr();
+function syncToday(){
+  var t=todayStr();
+  if(t===openedOn)return false;
+  var wasToday=cur&&cur.date===openedOn;
+  openedOn=t;
+  if(wasToday){loadDate(t);return true}
+  return false;
+}
+
+// Refresh = get the newest data from the Google Sheet (new days and changed old days),
+// check for a newer copy of the app, and redraw the screen.
+var refreshing=false,lastRefresh=0,activeJob=null;
+
+// circular loader: '' = spinning, 'done' = tick, 'fail' = warning
+function setLoader(el,state){el.className='loader'+(state?' '+state:'');el.textContent=state==='done'?'\u2713':(state==='fail'?'!':'')}
+function wait(ms){return new Promise(function(r){setTimeout(r,ms)})}
+
+// popup with the circular loader while old data is updated
+var syncTimer;
+function showSyncPop(){
+  clearTimeout(syncTimer);
+  setLoader($('#spLoader'),'');
+  $('#spTitle').textContent='Updating old data...';
+  $('#spText').textContent='Getting the latest days from Google Sheet.';
+  $('#syncPop').classList.add('on');
+}
+function finishSyncPop(res,wasShown){
+  var pop=$('#syncPop');
+  if(wasShown&&!pop.classList.contains('on'))return;   // you closed it yourself
+  clearTimeout(syncTimer);
+  var changed=res.ok&&(res.n.added||res.n.updated);
+  setLoader($('#spLoader'),res.ok?'done':'fail');
+  $('#spTitle').textContent=!res.ok?'Could not update':(changed?'Data updated':'Already up to date');
+  $('#spText').textContent=!res.ok?'Check the internet. Showing the data saved on this phone.':(syncMsg(res.n)||'Nothing new in the sheet.');
+  pop.classList.add('on');
+  syncTimer=setTimeout(function(){pop.classList.remove('on')},res.ok?1800:3200);
+}
+
+function refreshData(manual){
+  if(refreshing)return activeJob;
+  refreshing=true;lastRefresh=Date.now();
+  var b=$('#btnRefresh');
+  b.disabled=true;b.classList.add('busy');
+  var moved=syncToday();
+  if('serviceWorker' in navigator&&location.protocol!=='file:'){
+    navigator.serviceWorker.getRegistration().then(function(r){if(r)r.update()}).catch(function(){});
+  }
+  var welcomeOpen=$('#welcome').classList.contains('on');
+  var pop=manual&&!!settings.sheetUrl&&!welcomeOpen;   // show the loader popup
+  if(pop)showSyncPop();
+  var res={ok:true,n:{added:0,updated:0}};
+  var fresh=!manual&&(Date.now()-lastSyncAt<SYNC_FRESH_MS);   // synced recently: skip the network round trip
+  var job=(settings.sheetUrl&&!fresh)?pull():Promise.resolve({added:0,updated:0});
+  var work=job.then(function(n){
+    res.n=n;
+    if(manual||n.added||n.updated){if(!moved)loadDate(cur.date)}
+    if(manual&&!pop)toast(syncMsg(n)||(settings.sheetUrl?'Everything is up to date.':'Refreshed.'));
+  }).catch(function(){
+    res.ok=false;
+    if(manual&&!pop)toast('Could not reach Google Sheet. Check the internet and the link in Settings.');
+  });
+  activeJob=Promise.all([work,pop?wait(300):null]).then(function(){
+    refreshing=false;b.disabled=false;b.classList.remove('busy');
+    if(pop)finishSyncPop(res,true);
+    // refreshed in the background and old data changed: tell the person
+    else if(!manual&&res.ok&&(res.n.added||res.n.updated)&&!document.querySelector('.ov.on'))finishSyncPop(res,false);
+    return res;
+  });
+  return activeJob;
+}
+$('#btnRefresh').addEventListener('click',function(){refreshData(true)});
+
+/* ---------- popup shown every time the app opens ---------- */
+function openWelcome(){
+  var st=$('#wStatus');
+  $('#wTitle').textContent=settings.station||'Fuel Station';
+  $('#wDate').textContent=longDate(todayStr());
+  st.classList.remove('bad');
+  setLoader($('#wLoader'),settings.sheetUrl?'':'done');
+  st.textContent=settings.sheetUrl?'Updating old data from Google Sheet...':'Your data is saved on this phone.';
+  $('#welcome').classList.add('on');
+  var started=Date.now();
+  refreshData(false).then(function(res){
+    if(!res)return;
+    return wait(Math.max(0,250-(Date.now()-started))).then(function(){return res});
+  }).then(function(res){
+    if(!res)return;
+    var days=Object.keys(records).filter(function(d){return hasReadings(records[d])}).sort();
+    var last=days.length?('Last saved day: '+shortDate(days[days.length-1])+'.'):'No days saved yet.';
+    if(!res.ok){setLoader($('#wLoader'),'fail');st.classList.add('bad');st.textContent='Could not reach Google Sheet. Showing the data saved on this phone. '+last;return}
+    setLoader($('#wLoader'),'done');
+    var m=syncMsg(res.n);
+    st.textContent=(m||(settings.sheetUrl?'Data is up to date.':'Your data is saved on this phone.'))+' '+last;
+  });
+}
+// opened again from the background: refresh, and show the popup if you were away 10+ minutes
+var hiddenAt=0;
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='hidden'){hiddenAt=Date.now();return}
+  var away=hiddenAt?Date.now()-hiddenAt:0;
+  var busyOverlay=document.querySelector('.ov.on');
+  if(away>10*60*1000&&!busyOverlay){syncToday();openWelcome()}
+  else if(Date.now()-lastRefresh>60000)refreshData(false);
+  else syncToday();
+});
+
+/* ---------- settings ---------- */
+$('#btnSettings').addEventListener('click',function(){
+  $('#sStation').value=settings.station;$('#sDip').value=settings.dipUnit;$('#sUrl').value=settings.sheetUrl;
+  $('#settings').classList.add('on');
+});
+function readSettings(){
+  settings.station=$('#sStation').value.trim()||'My Fuel Station';
+  settings.dipUnit=$('#sDip').value.trim()||'cm';
+  settings.sheetUrl=$('#sUrl').value.trim();
+  store(KEY_SET,settings);refreshUnits();
+}
+$('#sSave').addEventListener('click',function(){readSettings();$('#settings').classList.remove('on');toast('Settings saved')});
+$('#sPull').addEventListener('click',function(){
+  readSettings();
+  if(!settings.sheetUrl){toast('Paste your Google Sheet link first');return}
+  showSyncPop();
+  Promise.all([pull(),wait(800)]).then(function(r){loadDate(cur.date);finishSyncPop({ok:true,n:r[0]},true)})
+   .catch(function(){finishSyncPop({ok:false},true)});
+});
+$('#sCsv').addEventListener('click',function(){
+  var ds=Object.keys(records).sort();
+  if(!ds.length){toast('No saved days yet');return}
+  var q=function(t){return '"'+String(t===null||t===undefined?'':t).replace(/"/g,'""')+'"'};
+  var lines=[COLS.map(function(c){return q(c[1])}).join(',')];
+  ds.forEach(function(d){var f=flat(records[d]);lines.push(COLS.map(function(c){return q(f[c[0]])}).join(','))});
+  var blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='fuel-stock-all-days.csv';
+  document.body.appendChild(a);a.click();a.remove();
+});
+
+/* ---------- install as an app + offline ---------- */
+var deferredInstall=null;
+var isStandalone=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+var isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function showInstall(){
+  var box=$('#instBox'),btn=$('#instBtn'),txt=$('#instText');
+  if(isStandalone){box.hidden=true;return}
+  box.hidden=false;
+  if(deferredInstall){btn.hidden=false}
+  else if(isIOS){btn.hidden=true;txt.textContent='To install: tap the Share button in Safari, then "Add to Home Screen". Your saved days stay safer when the app is installed.'}
+  else{btn.hidden=true;txt.textContent='To install: open the browser menu and tap "Install app" or "Add to Home screen".'}
+}
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredInstall=e;showInstall()});
+window.addEventListener('appinstalled',function(){deferredInstall=null;isStandalone=true;showInstall();toast('App installed')});
+$('#instBtn').addEventListener('click',function(){
+  if(!deferredInstall)return;
+  deferredInstall.prompt();
+  deferredInstall.userChoice.then(function(){deferredInstall=null;showInstall()});
+});
+$('#btnSettings').addEventListener('click',showInstall);
+
+if('serviceWorker' in navigator&&location.protocol!=='file:'){
+  window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})});
+}
+// ask the browser not to clear saved days when the phone is low on space
+if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(function(){})}
+
+/* ---------- start ---------- */
+buildForm();refreshUnits();loadDate(todayStr());
+openWelcome();   // popup + newest data every time the app opens
+})();
+</script>
+</body>
+</html>
